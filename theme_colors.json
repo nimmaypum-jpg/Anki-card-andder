@@ -1,0 +1,50 @@
+{
+  "bg": "#131c16",
+  "fg": "#407976",
+  "frame_bg": "#121b10",
+  "select_bg": "#ff8040",
+  "select_fg": "#000000",
+  "insert_bg": "#c0c0c0",
+  "button_bg": "#808040",
+  "button_fg": "#254452",
+  "entry_bg": "#000000",
+  "entry_fg": "#ff8040",
+  "text_bg": "#000000",
+  "text_fg": "#c0c0c0",
+  "label_fg": "#cccccc",
+  "status_fg": "#0000ff",
+  "checkbutton_bg": "#2d2d2d",
+  "checkbutton_fg": "#008080",
+  "combobox_bg": "#271f1f",
+  "combobox_fg": "#ff8000",
+  "separator_bg": "#555555",
+  "scrollbar_bg": "#555555",
+  "scrollbar_trough": "#3c3c3c",
+  "notebook_bg": "#2d2d2d",
+  "notebook_tab_bg": "#3c3c3c",
+  "notebook_tab_fg": "#cccccc",
+  "notebook_tab_selected_bg": "#0078d4",
+  "notebook_tab_selected_fg": "#ffffff",
+  "warning": "#ff9800",
+  "success": "#008040",
+  "error": "#f44336",
+  "info": "#2196F3",
+  "font_label": [
+    "Arial",
+    10,
+    "bold"
+  ],
+  "font_text": [
+    "Arial",
+    12
+  ],
+  "font_button": [
+    "Arial",
+    10,
+    "bold"
+  ],
+  "font_icon_button": [
+    "Arial",
+    12
+  ]
+}

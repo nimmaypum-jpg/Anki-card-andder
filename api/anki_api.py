@@ -1,0 +1,276 @@
+# -*- coding: utf-8 -*-
+"""
+Модуль для работы с Anki через AnkiConnect API.
+"""
+import os
+import requests
+from typing import List, Optional, Dict, Any, Union
+
+# Константы
+MODEL_NAME = "YouTube"
+ANKI_CONNECT_URL = "http://localhost:8765"
+DEFAULT_TIMEOUT = 5
+
+
+class AnkiAPI:
+    """Класс для работы с Anki через AnkiConnect"""
+    
+    def __init__(self, url: str = ANKI_CONNECT_URL):
+        self.url = url
+        self.model_name = MODEL_NAME
+        self.session = requests.Session()
+    
+    def _request(self, action: str, params: Dict = None, timeout: float = DEFAULT_TIMEOUT) -> Any:
+        """
+        Отправляет запрос к AnkiConnect.
+        
+        Args:
+            action: Название действия API
+            params: Параметры запроса
+            timeout: Таймаут в секундах
+            
+        Returns:
+            Результат запроса
+            
+        Raises:
+            Exception: При ошибке соединения или API
+        """
+        payload = {"action": action, "version": 6}
+        if params:
+            payload["params"] = params
+        
+        try:
+            # Используем сессию для переиспользования соединения
+            response = self.session.post(self.url, json=payload, timeout=timeout)
+            result = response.json()
+            
+            if result.get("error"):
+                raise Exception(result["error"])
+            
+            return result.get("result")
+        except requests.exceptions.ConnectionError:
+            raise Exception("ANKI_CONNECT_ERROR")
+        except requests.exceptions.Timeout:
+            raise Exception("ANKI_TIMEOUT_ERROR")
+    
+    def is_available(self) -> bool:
+        """Проверяет доступность AnkiConnect"""
+        try:
+            self._request("version", timeout=0.5)
+            return True
+        except Exception:
+            return False
+    
+    # === Модели ===
+    
+    def get_model_names(self) -> List[str]:
+        """Получает список имен моделей"""
+        return self._request("modelNames", timeout=1) or []
+    
+    def model_exists(self, model_name: str = None) -> bool:
+        """Проверяет существование модели"""
+        name = model_name or self.model_name
+        return name in self.get_model_names()
+    
+    def setup_model(self) -> bool:
+        """
+        Создает тип записи 'YouTube' с полями и CSS стилями.
+        
+        Returns:
+            True если модель создана или уже существует
+        """
+        if self.model_exists():
+            return True
+        
+        print(f"🛠 Настройка Anki: создание типа записи '{self.model_name}'...")
+        
+        fields = ["Phrase", "Translation", "Context", "Sound"]
+        
+        css = """
+        .card {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 20px;
+            text-align: center;
+            color: #2c3e50;
+            background-color: #fdfdfd;
+        }
+        .phrase {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1f538d;
+            margin-bottom: 20px;
+        }
+        .translation {
+            font-size: 24px;
+            color: #27ae60;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .context {
+            font-size: 16px;
+            color: #7f8c8d;
+            font-style: italic;
+            margin-top: 15px;
+            text-align: left;
+            display: inline-block;
+            max-width: 90%;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .sound { margin-top: 10px; }
+        """
+        
+        card_templates = [
+            {
+                "name": "Card 1",
+                "Front": '<div class="phrase">{{Phrase}}</div><div class="sound">{{Sound}}</div>',
+                "Back": '<div class="phrase">{{Phrase}}</div><hr id="answer"><div class="translation">{{Translation}}</div><div class="context">{{Context}}</div>'
+            }
+        ]
+        
+        try:
+            self._request("createModel", {
+                "modelName": self.model_name,
+                "inOrderFields": fields,
+                "css": css,
+                "cardTemplates": card_templates
+            })
+            print(f"✅ Тип записи '{self.model_name}' успешно создан!")
+            return True
+        except Exception as e:
+            print(f"❌ Ошибка создания модели: {e}")
+            return False
+    
+    # === Колоды ===
+    
+    def get_deck_names(self, with_counts: bool = True) -> Union[List[str], str]:
+        """
+        Получает список колод.
+        
+        Args:
+            with_counts: Если True, добавляет количество карточек
+            
+        Returns:
+            Список колод или "ANKI_CONNECT_ERROR"
+        """
+        try:
+            deck_names = self._request("deckNames", timeout=0.5) or []
+            
+            if not with_counts:
+                return sorted(deck_names)
+            
+            # Получаем статистику
+            stats = self._request("getDeckStats", {"decks": deck_names}, timeout=1.0) or {}
+            
+            deck_counts = {}
+            for deck_id, stat in stats.items():
+                name = stat.get("name")
+                count = stat.get("total_in_deck", 0)
+                if name:
+                    deck_counts[name] = count
+            
+            # Формируем список "Имя (Количество)"
+            formatted = [f"{name} ({deck_counts.get(name, 0)})" for name in deck_names]
+            return sorted(formatted)
+            
+        except Exception as e:
+            if "ANKI_CONNECT_ERROR" in str(e):
+                return "ANKI_CONNECT_ERROR"
+            print(f"Ошибка получения колод: {e}")
+            return []
+    
+    def create_deck(self, deck_name: str) -> bool:
+        """Создает новую колоду"""
+        if not deck_name or not deck_name.strip():
+            return False
+        
+        try:
+            self._request("createDeck", {"deck": deck_name.strip()}, timeout=8)
+            return True
+        except Exception as e:
+            print(f"❌ Ошибка создания колоды: {e}")
+            return False
+    
+    @staticmethod
+    def clean_deck_name(display_name: str) -> str:
+        """
+        Убирает суффикс с количеством карточек.
+        Пример: "Deutsch (150)" -> "Deutsch"
+        """
+        if not display_name:
+            return ""
+        
+        last_open_paren = display_name.rfind(" (")
+        if last_open_paren != -1 and display_name.endswith(")"):
+            content = display_name[last_open_paren+2:-1]
+            if content.isdigit():
+                return display_name[:last_open_paren]
+        return display_name
+    
+    # === Заметки ===
+    
+    def find_notes(self, phrase: str) -> List[int]:
+        """Ищет ID заметок с такой же фразой"""
+        try:
+            escaped_phrase = phrase.replace('"', '\\"')
+            query = f'Phrase:"{escaped_phrase}"'
+            return self._request("findNotes", {"query": query}, timeout=3) or []
+        except Exception as e:
+            print(f"⚠️ Ошибка поиска заметок: {e}")
+            return []
+    
+    def delete_notes(self, note_ids: List[int]) -> bool:
+        """Удаляет заметки по их ID"""
+        if not note_ids:
+            return True
+        
+        try:
+            self._request("deleteNotes", {"notes": note_ids})
+            return True
+        except Exception as e:
+            print(f"❌ Ошибка удаления заметок: {e}")
+            return False
+    
+    def add_note(self, phrase: str, translation: str, context: str, 
+                 deck_name: str, audio_path: str = None) -> bool:
+        """
+        Добавляет заметку в Anki.
+        
+        Args:
+            phrase: Немецкая фраза
+            translation: Перевод
+            context: Контекст
+            deck_name: Имя колоды
+            audio_path: Путь к аудиофайлу (опционально)
+            
+        Returns:
+            True при успехе
+        """
+        clean_name = self.clean_deck_name(deck_name)
+        
+        note = {
+            "deckName": clean_name,
+            "modelName": self.model_name,
+            "fields": {
+                "Phrase": phrase.replace('\n', '<br>'),
+                "Translation": translation.replace('\n', '<br>'),
+                "Context": context.replace('\n', '<br>')
+            },
+            "tags": ["youtube", "german", "local-ai"]
+        }
+        
+        if audio_path:
+            note["audio"] = {
+                "path": audio_path,
+                "filename": os.path.basename(audio_path),
+                "fields": ["Sound"]
+            }
+        
+        self._request("addNote", {"note": note})
+        return True
+
+
+# Глобальный экземпляр API
+anki_api = AnkiAPI()

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Build
+build/
+dist/
+*.spec
+*.exe
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# User data (не публиковать на GitHub)
+anki_settings.txt
+user_files/
+
+# OS
+.DS_Store
+Thumbs.db
