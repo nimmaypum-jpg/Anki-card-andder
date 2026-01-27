@@ -11,9 +11,9 @@ import threading
 import os
 import json
 
-import audio_utils
-from theme_manager import theme_manager
-from clipboard_manager import setup_text_widget_context_menu
+from core import audio_utils
+from ui.theme_manager import theme_manager
+from core.clipboard_manager import setup_text_widget_context_menu
 from core.settings_manager import save_settings, get_user_dir
 from core.prompts_manager import prompts_manager, update_active_prompts, rename_prompt_preset
 from core.app_state import app_state

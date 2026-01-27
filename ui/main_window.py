@@ -9,9 +9,9 @@ import time
 import os
 import json
 
-import audio_utils
-from theme_manager import theme_manager
-from clipboard_manager import setup_text_widget_context_menu, GlobalClipboardManager
+from core import audio_utils
+from ui.theme_manager import theme_manager
+from core.clipboard_manager import setup_text_widget_context_menu, GlobalClipboardManager
 
 
 class ToolTip:
