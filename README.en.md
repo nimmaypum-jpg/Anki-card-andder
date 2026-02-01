@@ -44,10 +44,11 @@ python main.py
 ## 🛠️ Usage
 
 1. Open **Anki**.
-2. Start **Wordy**.
-3. **Copy** any German word or phrase.
-4. Wordy will automatically generate translation and context.
-5. Click **"To Anki"** — and you're done!
+2. Open **Ollama**
+3.  Start **Wordy**.
+4. **Copy** any German word or phrase.
+5. Wordy will automatically generate translation and context.
+6. Click **"To Anki"** — and you're done!
 
 ---
 
