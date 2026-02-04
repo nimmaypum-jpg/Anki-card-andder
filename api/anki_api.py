@@ -72,20 +72,23 @@ class AnkiAPI:
         name = model_name or self.model_name
         return name in self.get_model_names()
     
+    def get_model_field_names(self, model_name: str = None) -> List[str]:
+        """Получает список полей модели"""
+        name = model_name or self.model_name
+        try:
+            return self._request("modelFieldNames", {"modelName": name}, timeout=1) or []
+        except Exception:
+            return []
+
     def setup_model(self) -> bool:
         """
         Создает тип записи 'YouTube' с полями и CSS стилями.
+        Если модель уже существует, проверяет наличие необходимых полей.
         
         Returns:
             True если модель создана или уже существует
         """
-        if self.model_exists():
-            return True
-        
-        print(f"🛠 Настройка Anki: создание типа записи '{self.model_name}'...")
-        
-        fields = ["Phrase", "Translation", "Context", "Sound"]
-        
+        required_fields = ["Phrase", "Translation", "Context", "Sound"]
         css = """
         .card {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -129,11 +132,57 @@ class AnkiAPI:
                 "Back": '<div class="phrase">{{Phrase}}</div><hr id="answer"><div class="translation">{{Translation}}</div><div class="context">{{Context}}</div>'
             }
         ]
+
+        if self.model_exists():
+            # Если модель существует, проверяем поля
+            current_fields = self.get_model_field_names()
+            missing_fields = [f for f in required_fields if f not in current_fields]
+            
+            if not missing_fields:
+                return True
+                
+            print(f"⚠️ В модели '{self.model_name}' отсутствуют поля: {missing_fields}. Попытка добавить...")
+            for field in missing_fields:
+                try:
+                    self._request("modelFieldAdd", {
+                        "modelName": self.model_name,
+                        "fieldName": field
+                    })
+                    print(f"✅ Поле '{field}' добавлено.")
+                except Exception as e:
+                    print(f"❌ Ошибка добавления поля '{field}': {e}")
+            
+            # Также обновляем CSS и шаблоны на всякий случай
+            try:
+                self._request("updateModelStyling", {
+                    "model": {
+                        "name": self.model_name,
+                        "css": css
+                    }
+                })
+                self._request("updateModelTemplates", {
+                    "model": {
+                        "name": self.model_name,
+                        "templates": {
+                            "Card 1": {
+                                "Front": card_templates[0]["Front"],
+                                "Back": card_templates[0]["Back"]
+                            }
+                        }
+                    }
+                })
+                print(f"✅ Стили и шаблоны модели '{self.model_name}' обновлены.")
+            except Exception as e:
+                print(f"⚠️ Не удалось обновить стили/шаблоны: {e}")
+                
+            return True
+        
+        print(f"🛠 Настройка Anki: создание типа записи '{self.model_name}'...")
         
         try:
             self._request("createModel", {
                 "modelName": self.model_name,
-                "inOrderFields": fields,
+                "inOrderFields": required_fields,
                 "css": css,
                 "cardTemplates": card_templates
             })
