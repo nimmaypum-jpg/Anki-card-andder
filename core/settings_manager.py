@@ -119,7 +119,7 @@ def load_settings(update_app_state: bool = True) -> Dict[str, Any]:
                         elif k == "AI_PRESETS":
                              try:
                                  settings[k] = json.loads(v)
-                             except:
+                             except Exception:
                                  settings[k] = []
                         else:
                              settings[k] = v

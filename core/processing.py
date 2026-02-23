@@ -71,7 +71,10 @@ def process_results_queue(root):
             widgets["translation_text"].insert("1.0", translation)
             widgets["context_widget"].delete("1.0", tk.END)
             widgets["context_widget"].insert("1.0", context)
-            widgets["generate_btn"].configure(text="Генерировать", state="normal", fg_color="#2CC985", hover_color="#26AD72", text_color="white")
+            widgets["generate_btn"].configure(
+                text=localization_manager.get_text("generate"), state="normal",
+                fg_color="#2CC985", hover_color="#26AD72", text_color="white"
+            )
             widgets["stop_btn"].configure(state="disabled")
             update_processing_indicator("✅ Готово", animate=False)
             root.after(2000, lambda: update_processing_indicator("", animate=False))
@@ -87,8 +90,10 @@ def process_results_queue(root):
             is_conn = err_str == "OLLAMA_CONNECT_ERROR"
             update_processing_indicator(f"❌ {'Ollama недоступен' if is_conn else 'Ошибка'}", animate=False)
             if not is_conn:
-                messagebox.showerror("Ошибка Ollama", err_str)
-            widgets["generate_btn"].configure(text="Генерировать", state="normal")
+                messagebox.showerror(localization_manager.get_text("error"), err_str)
+            widgets["generate_btn"].configure(
+                text=localization_manager.get_text("generate"), state="normal"
+            )
             widgets["stop_btn"].configure(state="disabled")
             root.after(3000, lambda: update_processing_indicator("", animate=False))
             
@@ -109,32 +114,49 @@ def process_results_queue(root):
             ), daemon=True).start()
             
         elif message == "anki_ok":
-            update_processing_indicator("✅ Готово", animate=False)
-            root.after(2000, lambda: update_processing_indicator("", animate=False))
-            
-            # Разблокируем кнопку
+            if data:
+                app_state.force_replace_flag = False
+                audio_utils.play_sound("success")
+                widgets["add_btn"].configure(
+                    fg_color="#2CC985", hover_color="#26AD72", text_color="white"
+                )
+            update_processing_indicator("✅ Готово!", animate=False)
             if "add_btn" in widgets:
-                widgets["add_btn"].configure(state="normal", text="✅ " + localization_manager.get_text("add_to_anki"))
-            
+                widgets["add_btn"].configure(
+                    state="normal",
+                    text="✅ " + localization_manager.get_text("add_to_anki")
+                )
+            if data:
+                root.after(1500, app_state.main_window_components["on_action_complete"])
+            root.after(2000, lambda: update_processing_indicator("", animate=False))
+
         elif message == "anki_error":
             err_str = str(data)
             update_processing_indicator("❌ Ошибка Anki", animate=False)
-            messagebox.showerror("Ошибка Anki", f"Не удалось добавить карточку:\n{err_str}", parent=root)
+            messagebox.showerror(
+                localization_manager.get_text("error"),
+                f"Не удалось добавить в Anki:\n{err_str}", parent=root
+            )
             root.after(3000, lambda: update_processing_indicator("", animate=False))
-            
-            # Разблокируем кнопку
             if "add_btn" in widgets:
-                widgets["add_btn"].configure(state="normal", text="✅ " + localization_manager.get_text("add_to_anki"))
+                widgets["add_btn"].configure(
+                    state="normal",
+                    text="✅ " + localization_manager.get_text("add_to_anki")
+                )
 
         elif message == "audio_error":
             err_str = str(data)
             update_processing_indicator("❌ Ошибка аудио", animate=False)
-            messagebox.showerror("Ошибка аудио", f"Не удалось сгенерировать озвучку:\n{err_str}", parent=root)
+            messagebox.showerror(
+                localization_manager.get_text("error"),
+                f"Не удалось сгенерировать озвучку:\n{err_str}", parent=root
+            )
             root.after(3000, lambda: update_processing_indicator("", animate=False))
-            
-            # Разблокируем кнопку
             if "add_btn" in widgets:
-                widgets["add_btn"].configure(state="normal", text="✅ " + localization_manager.get_text("add_to_anki"))
+                widgets["add_btn"].configure(
+                    state="normal",
+                    text="✅ " + localization_manager.get_text("add_to_anki")
+                )
 
         elif message == "anki_duplicate":
             phrase, translation, context, deck_name, audio_path, existing_ids = data
@@ -164,25 +186,6 @@ def process_results_queue(root):
                 update_processing_indicator("Отменено", animate=False)
                 root.after(2000, lambda: update_processing_indicator("", animate=False))
                 
-        elif message == "audio_error":
-            messagebox.showerror("Ошибка озвучки", f"Не удалось создать аудиофайл: {data}")
-            update_processing_indicator("❌ Ошибка", animate=False)
-            root.after(3000, lambda: update_processing_indicator("", animate=False))
-            
-        elif message == "anki_ok":
-            if data:
-                app_state.force_replace_flag = False
-                audio_utils.play_sound("success")
-                widgets["add_btn"].configure(fg_color="#2CC985", hover_color="#26AD72", text_color="white")
-                update_processing_indicator("✅ Готово!", animate=False)
-                root.after(1500, app_state.main_window_components["on_action_complete"])
-                root.after(2000, lambda: update_processing_indicator("", animate=False))
-                
-        elif message == "anki_error":
-            messagebox.showerror("Ошибка Anki", f"Не удалось добавить в Anki:\n{data}")
-            update_processing_indicator("❌ Ошибка", animate=False)
-            root.after(3000, lambda: update_processing_indicator("", animate=False))
-            
         elif message == "models_ok":
             if data == "OLLAMA_CONNECT_ERROR":
                 print("⚠️ Ollama недоступен")

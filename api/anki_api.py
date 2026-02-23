@@ -6,6 +6,7 @@ import os
 import requests
 import base64
 from typing import List, Optional, Dict, Any, Union
+from core.logger import debug_log
 
 # Константы
 MODEL_NAME = "YouTube"
@@ -305,17 +306,8 @@ class AnkiAPI:
         """
         clean_name = self.clean_deck_name(deck_name)
         
-        # Consolidate logging to the same file as workers.py
-        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "user_files")
-        os.makedirs(log_dir, exist_ok=True)
-        log_path = os.path.join(log_dir, "audio_debug.log")
         def _log(msg):
-            try:
-                import datetime
-                with open(log_path, "a", encoding="utf-8") as f:
-                    f.write(f"[{datetime.datetime.now()}] [API] {msg}\n")
-            except: pass
-            print(f"[API] {msg}")
+            debug_log(msg, prefix="[API]")
 
         note = {
             "deckName": clean_name,

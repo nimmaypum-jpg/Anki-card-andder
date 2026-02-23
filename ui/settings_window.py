@@ -143,11 +143,6 @@ def open_settings_window(parent, dependencies=None, settings=None, initial_tab=N
         app_state.openrouter_model = settings.get("OPENROUTER_MODEL", "")
         app_state.google_api_key = settings.get("GOOGLE_API_KEY", "")
         
-        # Обновляем зависимости для UI
-        if dependencies:
-            dependencies.TTS_SPEED_LEVEL = settings["TTS_SPEED_LEVEL"]
-            dependencies.TTS_LANG = settings["TTS_LANG"]
-            dependencies.TTS_TLD = settings["TTS_TLD"]
         
         audio_utils.update_tts_settings(settings["TTS_LANG"], settings["TTS_SPEED_LEVEL"], settings["TTS_TLD"])
         

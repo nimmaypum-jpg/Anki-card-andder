@@ -34,20 +34,23 @@ def get_audio_folder():
         base_dir = os.path.dirname(os.path.dirname(__file__))
     return os.path.join(base_dir, "user_files")
 
-def ensure_success_sound():
+def _ensure_sound(name, freqs, duration, volume):
     """
-    Проверяет наличие файла success.wav в папке assets. 
-    Если его нет - создает папку и генерирует звук.
+    Проверяет наличие wav файла в папке assets, создаёт при отсутствии.
+    
+    Args:
+        name: Имя файла (без .wav)
+        freqs: Список частот нот (or single frequency)
+        duration: Длительность одной ноты в секундах
+        volume: Громкость (0.0 - 1.0)
     """
     import sys
     
-    # Определяем базовую директорию
     if getattr(sys, 'frozen', False):
         base_dir = os.path.dirname(sys.executable)
     else:
         base_dir = os.path.dirname(__file__)
-        
-    # Путь к папке ресурсов
+    
     assets_dir = os.path.join(base_dir, "assets")
     if not os.path.exists(assets_dir):
         try:
@@ -55,104 +58,58 @@ def ensure_success_sound():
         except Exception as e:
             print(f"Не удалось создать папку assets: {e}")
             return None
-            
-    filepath = os.path.join(assets_dir, "success.wav")
     
+    filepath = os.path.join(assets_dir, f"{name}.wav")
     if os.path.exists(filepath):
         return filepath
-        
+    
     try:
-        # Параметры аудио
         sample_rate = 44100
-        duration = 0.1  # Длительность одной ноты
-        volume = 0.15   # БЫЛО 0.5
-        
-        # Ноты (До-Мажор: C5, E5, G5)
-        freqs = [523.25, 659.25, 783.99]
-        
         audio_data = []
+        
+        if isinstance(freqs, (int, float)):
+            freqs = [freqs]
         
         for freq in freqs:
             num_samples = int(sample_rate * duration)
             for i in range(num_samples):
                 t = float(i) / sample_rate
-                # Генерируем синусоиду
                 value = math.sin(2.0 * math.pi * freq * t)
-                # Применяем простую огибающую (envelope) чтобы не щелкало
-                if i < 500: value *= (i / 500)
-                if i > num_samples - 500: value *= ((num_samples - i) / 500)
+                # Плавная огибающая
+                if i < 500:
+                    value *= (i / 500)
+                fade_out = min(500, num_samples // 4)
+                if i > num_samples - fade_out:
+                    value *= ((num_samples - i) / fade_out)
                 
-                # Конвертируем в 16-бит integer
                 sample = int(value * volume * 32767.0)
                 audio_data.append(struct.pack('<h', sample))
             
-            # Добавляем небольшую паузу
+            # Пауза между нотами
             pause_samples = int(sample_rate * 0.05)
             for _ in range(pause_samples):
                 audio_data.append(struct.pack('<h', 0))
-
-        with wave.open(filepath, 'w') as wav_file:
-            wav_file.setnchannels(1) # Моно
-            wav_file.setsampwidth(2) # 2 байта (16 бит)
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(b''.join(audio_data))
-            
-        return filepath
-    except Exception as e:
-        print(f"Ошибка создания success.wav: {e}")
-        return None
-
-def ensure_notify_sound():
-    """
-    Проверяет наличие файла notify.wav в папке assets. 
-    Если его нет - генерирует мягкий сигнал.
-    """
-    import sys
-    
-    if getattr(sys, 'frozen', False):
-        base_dir = os.path.dirname(sys.executable)
-    else:
-        base_dir = os.path.dirname(__file__)
         
-    assets_dir = os.path.join(base_dir, "assets")
-    if not os.path.exists(assets_dir):
-        try: os.makedirs(assets_dir)
-        except Exception: return None
-            
-    filepath = os.path.join(assets_dir, "notify.wav")
-    
-    if os.path.exists(filepath):
-        return filepath
-        
-    try:
-        sample_rate = 44100
-        duration = 0.15 
-        volume = 0.4
-        freq = 800.0
-        
-        audio_data = []
-        num_samples = int(sample_rate * duration)
-        
-        for i in range(num_samples):
-            t = float(i) / sample_rate
-            value = math.sin(2.0 * math.pi * freq * t)
-            # Плавная огибающая
-            if i < 500: value *= (i / 500)
-            if i > num_samples - 2000: value *= ((num_samples - i) / 2000)
-            
-            sample = int(value * volume * 32767.0)
-            audio_data.append(struct.pack('<h', sample))
-
         with wave.open(filepath, 'w') as wav_file:
             wav_file.setnchannels(1)
             wav_file.setsampwidth(2)
             wav_file.setframerate(sample_rate)
             wav_file.writeframes(b''.join(audio_data))
-            
+        
         return filepath
     except Exception as e:
-        print(f"Ошибка создания notify.wav: {e}")
+        print(f"Ошибка создания {name}.wav: {e}")
         return None
+
+
+def ensure_success_sound():
+    """Проверяет/создаёт звук успеха (три ноты До-мажор)"""
+    return _ensure_sound("success", [523.25, 659.25, 783.99], duration=0.1, volume=0.15)
+
+
+def ensure_notify_sound():
+    """Проверяет/создаёт звук уведомления (один тон)"""
+    return _ensure_sound("notify", [800.0], duration=0.15, volume=0.4)
 
 def play_sound(sound_type="success"):
     """
@@ -193,8 +150,6 @@ def process_text_for_speed(text, speed_level=0):
         processed_text = re.sub(r' ', r'      ', processed_text)
         # Много пробелов после знаков препинания
         processed_text = re.sub(r'([,.!?;:])', r'\1       ', processed_text)
-        
-    return processed_text
         
     return processed_text
 

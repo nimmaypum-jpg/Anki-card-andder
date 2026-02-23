@@ -294,7 +294,7 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     widgets["stop_btn"].pack(fill="x")
     
     # Индикатор текущей AI модели (кликабельный для быстрого доступа к настройкам AI)
-    ai_indicator_frame = ctk.CTkFrame(gen_frame, fg_color="transparent")
+    ai_indicator_frame = ctk.CTkFrame(gen_frame)
     ai_indicator_frame.pack(side="right", padx=5, pady=5)
     
     # Скрытая переменная для модели (используется при генерации)
@@ -303,7 +303,6 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     ai_model_label = ctk.CTkLabel(
         ai_indicator_frame, 
         text=f"⚡ {settings.get('OLLAMA_MODEL', localization_manager.get_text('ai_not_configured'))}", 
-        font=("Roboto", 11),
         text_color=("#666666", "#aaaaaa"),
         cursor="hand2"
     )

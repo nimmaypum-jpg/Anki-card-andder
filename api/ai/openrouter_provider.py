@@ -81,7 +81,7 @@ class OpenRouterProvider(BaseAIProvider):
                     error_json = response.json()
                     if "error" in error_json:
                         error_msg = error_json["error"].get("message", error_msg)
-                except:
+                except Exception:
                     pass
                 raise Exception(f"OpenRouter Error {response.status_code}: {error_msg}")
             

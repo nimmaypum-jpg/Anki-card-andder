@@ -363,10 +363,8 @@ def setup_text_widget_context_menu(widget) -> ClipboardHandler:
 
 
 def setup_clipboard_bindings(widget) -> ClipboardHandler:
-    """Фасадная функция для настройки горячих клавиш буфера обмена."""
-    handler = ClipboardHandler(widget)
-    handler.setup_bindings()
-    return handler
+    """Алиас для setup_text_widget_context_menu (обратная совместимость)."""
+    return setup_text_widget_context_menu(widget)
 
 
 def copy_cut_paste_handler(widget, action: str) -> bool:

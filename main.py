@@ -120,9 +120,6 @@ def main():
     dependencies.clean_deck_name = anki_api.clean_deck_name
     dependencies.open_settings_window = lambda parent, deps, **kwargs: open_settings_window(parent, deps, settings, **kwargs)
     dependencies.threading = threading
-    dependencies.TTS_LANG = app_state.tts.lang
-    dependencies.TTS_SPEED_LEVEL = app_state.tts.speed_level
-    dependencies.TTS_TLD = app_state.tts.tld
     dependencies.DEFAULT_DECK_NAME = DEFAULT_DECK_NAME
     dependencies.load_background_data_worker = load_background_data_worker
     dependencies.results_queue = app_state.results_queue
@@ -149,7 +146,7 @@ def main():
             try:
                 widgets["generate_btn"].configure(text=f"{int(elapsed)}s", text_color="black")
                 root.after(1000, update_timer)
-            except:
+            except Exception:
                 pass
         update_timer()
         

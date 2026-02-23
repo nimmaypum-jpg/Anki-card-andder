@@ -6,6 +6,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
+import re
 
 
 @dataclass
@@ -100,8 +101,6 @@ class BaseAIProvider(ABC):
         Returns:
             Tuple[перевод, контекст]
         """
-        import re
-        
         prompt = context_prompt.format(phrase=phrase)
         result = self.generate(prompt, model)
         
@@ -111,7 +110,6 @@ class BaseAIProvider(ABC):
     
     def _extract_translation_and_context(self, text: str, delimiter: str = "КОНТЕКСТ") -> Tuple[str, str]:
         """Извлекает перевод и контекст из ответа AI"""
-        import re
         
         # Формируем паттерн для разделителя контекста
         # Добавляем стандартные варианты для надежности + пользовательский delimiter
@@ -147,7 +145,6 @@ class BaseAIProvider(ABC):
     
     def _clean_markdown(self, text: str) -> str:
         """Убирает markdown разметку из текста"""
-        import re
         
         # Убираем жирный текст
         text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)

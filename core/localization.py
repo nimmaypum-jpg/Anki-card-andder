@@ -224,7 +224,7 @@ class LocalizationManager:
         if kwargs:
             try:
                 return text.format(**kwargs)
-            except:
+            except Exception:
                 pass
         return text
 
