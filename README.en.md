@@ -3,7 +3,7 @@
 > [!TIP]
 > **✨ Discover Lerne - The Future of Language Learning!**
 > This is not just an Anki-card-adder update. It's a complete ecosystem that replaces everything. An intelligent assistant that learns with you.
-> [**Learn more on the Lerne website**](https://nimmaypum-jpg.github.io/Anki-card-andder/) (Free and Open Source)
+> [**Learn more on the Lerne website**](https://LanguageSage.github.io/Anki-card-andder/) (Free and Open Source)
 
 **Learn German faster with AI-powered flashcards.**
 
@@ -34,7 +34,7 @@ Wordy is a smart assistant that automates the creation of high-quality Anki card
 
 ### 2. Installation
 ```bash
-git clone https://github.com/nimmaypum-jpg/Anki-card-andder.git wordy
+git clone https://github.com/LanguageSage/Anki-card-andder.git wordy
 cd wordy
 pip install -r requirements.txt
 ```

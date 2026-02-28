@@ -27,7 +27,7 @@ if sys.stderr.encoding != "utf-8":
 # ─────────────────────────────────────────────────────────────
 # Конфигурация
 # ─────────────────────────────────────────────────────────────
-APP_NAME = "Lerne"
+APP_NAME = "Wordy"
 EXE_NAME = "Wordy.exe"
 SPEC_FILE = "wordy.spec"
 DIST_DIR = "dist"

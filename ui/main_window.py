@@ -231,7 +231,7 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
         cursor="hand2"
     )
     check_updates_label.pack(side="right", padx=5)
-    check_updates_label.bind("<Button-1>", lambda e: webbrowser.open("https://nimmaypum-jpg.github.io/Anki-card-andder/"))
+    check_updates_label.bind("<Button-1>", lambda e: webbrowser.open("https://LanguageSage.github.io/Anki-card-andder/"))
     
     def on_prompt_select(choice):
         """Применяет выбранный промпт к приложению"""
