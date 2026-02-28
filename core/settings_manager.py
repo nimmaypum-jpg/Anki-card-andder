@@ -29,12 +29,45 @@ DEFAULT_CONTEXT_PROMPT = (
 )
 
 
-def get_user_dir() -> str:
-    """Возвращает директорию для хранения пользовательских файлов (рядом с EXE)"""
+def _get_exe_dir() -> str:
+    """Возвращает директорию рядом с EXE или корень проекта при запуске из Python"""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     else:
         return os.path.dirname(os.path.dirname(__file__))
+
+
+def get_base_data_dir() -> str:
+    """
+    Возвращает базовую директорию для хранения пользовательских данных.
+
+    Логика выбора:
+    1. Portable mode: если рядом с EXE есть файл 'portable' — используем папку EXE.
+    2. Portable mode (авто): если в папке EXE уже есть 'anki_settings.txt' или 'user_files/' — 
+       считаем что это portable-установка и продолжаем использовать локальную папку.
+    3. Standard mode: данные хранятся в %APPDATA%\\Lerne
+    """
+    exe_dir = _get_exe_dir()
+
+    # Явный маркер портативного режима
+    if os.path.exists(os.path.join(exe_dir, 'portable')):
+        return exe_dir
+
+    # Авто-определение портативного режима (обратная совместимость)
+    if (os.path.exists(os.path.join(exe_dir, 'anki_settings.txt')) or
+            os.path.exists(os.path.join(exe_dir, 'user_files'))):
+        return exe_dir
+
+    # Standard mode — данные в %APPDATA%
+    appdata = os.getenv('APPDATA') or exe_dir
+    data_dir = os.path.join(appdata, 'Lerne')
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+
+def get_user_dir() -> str:
+    """Возвращает директорию для хранения пользовательских файлов"""
+    return get_base_data_dir()
 
 
 def get_resource_path(relative_path: str) -> str:
@@ -49,12 +82,12 @@ def get_resource_path(relative_path: str) -> str:
 
 def get_data_dir() -> str:
     """Возвращает директорию data для внешних конфигов"""
-    return os.path.join(get_user_dir(), "data")
+    return os.path.join(get_base_data_dir(), "data")
 
 
 def get_settings_path() -> str:
     """Возвращает путь к файлу настроек"""
-    return os.path.join(get_user_dir(), "anki_settings.txt")
+    return os.path.join(get_base_data_dir(), "anki_settings.txt")
 
 
 def get_default_settings() -> Dict[str, Any]:

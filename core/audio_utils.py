@@ -26,13 +26,8 @@ TTS_LANG = "de"
 
 def get_audio_folder():
     """Возвращает путь к папке для хранения аудиофайлов"""
-    if getattr(sys, 'frozen', False):
-         # Если запущен из exe - сохраняем файлы в папке user_files рядом с exe
-        base_dir = os.path.dirname(sys.executable)
-    else:
-        # Если запущен из Python - используем корень проекта (на один уровень выше core)
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-    return os.path.join(base_dir, "user_files")
+    from core.settings_manager import get_base_data_dir
+    return os.path.join(get_base_data_dir(), "user_files")
 
 def _ensure_sound(name, freqs, duration, volume):
     """
@@ -46,12 +41,8 @@ def _ensure_sound(name, freqs, duration, volume):
     """
     import sys
     
-    if getattr(sys, 'frozen', False):
-        base_dir = os.path.dirname(sys.executable)
-    else:
-        base_dir = os.path.dirname(__file__)
-    
-    assets_dir = os.path.join(base_dir, "assets")
+    from core.settings_manager import get_base_data_dir
+    assets_dir = os.path.join(get_base_data_dir(), "assets")
     if not os.path.exists(assets_dir):
         try:
             os.makedirs(assets_dir)

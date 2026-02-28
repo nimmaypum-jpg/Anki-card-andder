@@ -10,11 +10,8 @@ import datetime
 
 def _get_log_dir() -> str:
     """Возвращает директорию для логов"""
-    if getattr(sys, 'frozen', False):
-        base_dir = os.path.dirname(sys.executable)
-    else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    log_dir = os.path.join(base_dir, "user_files")
+    from core.settings_manager import get_base_data_dir
+    log_dir = os.path.join(get_base_data_dir(), "user_files")
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
 
