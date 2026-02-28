@@ -231,7 +231,7 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
         cursor="hand2"
     )
     check_updates_label.pack(side="right", padx=5)
-    check_updates_label.bind("<Button-1>", lambda e: webbrowser.open("https://example.com/update"))
+    check_updates_label.bind("<Button-1>", lambda e: webbrowser.open("https://nimmaypum-jpg.github.io/Anki-card-andder/"))
     
     def on_prompt_select(choice):
         """Применяет выбранный промпт к приложению"""
@@ -408,23 +408,6 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     widgets["create_deck_btn"].pack(side="left", padx=5)
     ToolTip(widgets["create_deck_btn"], localization_manager.get_text("create_deck"))
 
-    # ========================================
-    # PROMO SECTION (Lerne)
-    # ========================================
-    promo_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-    promo_frame.pack(fill="x", pady=(0, 5), padx=5)
-    
-    promo_btn = ctk.CTkButton(
-        promo_frame, 
-        text="✨ Попробуйте Lerne: Будущее изучения языков", 
-        command=lambda: webbrowser.open("https://LanguageSage.github.io/Anki-card-andder/"),
-        fg_color="#3a2a5c", hover_color="#4a3a6c",
-        text_color="#e0d0ff",
-        font=("Outfit", 12, "bold"),
-        height=30
-    )
-    promo_btn.pack(fill="x")
-    ToolTip(promo_btn, "Узнайте о нашей новой платформе (Откроется в браузере)")
 
 
     # ========================================
