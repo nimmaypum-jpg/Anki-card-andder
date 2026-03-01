@@ -277,13 +277,30 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     def play_selected_audio_wrapper():
         play_selected_audio(widgets, tvars, dependencies, root)
     
-    widgets["font_sound_btn"] = ctk.CTkButton(header_frame, text="🔊", width=40, height=30, command=play_selected_audio_wrapper, fg_color="#2cc985", hover_color="#26ad72")
+    try:
+        from PIL import Image
+        from core.settings_manager import get_resource_path
+        audio_active_path = get_resource_path(os.path.join("assets", "audio_active.png"))
+        audio_inactive_path = get_resource_path(os.path.join("assets", "audio_inactive.png"))
+        audio_active_img = ctk.CTkImage(light_image=Image.open(audio_active_path), dark_image=Image.open(audio_active_path), size=(20, 20))
+        audio_inactive_img = ctk.CTkImage(light_image=Image.open(audio_inactive_path), dark_image=Image.open(audio_inactive_path), size=(20, 20))
+    except Exception as e:
+        print(f"Ошибка загрузки иконок аудио: {e}")
+        audio_active_img = None
+        audio_inactive_img = None
+
+    widgets["font_sound_btn"] = ctk.CTkButton(header_frame, text="" if audio_active_img else "🔊", 
+                                              image=audio_active_img, width=40, height=30, 
+                                              command=play_selected_audio_wrapper, 
+                                              fg_color="transparent", hover=False)
     widgets["font_sound_btn"].pack(side="right", padx=5)
     ToolTip(widgets["font_sound_btn"], localization_manager.get_text("play_audio"))
 
     popup_menu = [None]
 
     def show_menu(event=None):
+        if not tvars.get("audio_enabled_var", tk.BooleanVar(value=True)).get():
+            return
         if popup_menu[0] is not None:
             return
             
@@ -343,10 +360,18 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
 
     widgets["font_sound_btn"].bind("<Enter>", show_menu)
     
+    def toggle_audio_btn_state():
+        if tvars.get("audio_enabled_var") and tvars["audio_enabled_var"].get():
+            widgets["font_sound_btn"].configure(image=audio_active_img, state="normal")
+        else:
+            widgets["font_sound_btn"].configure(image=audio_inactive_img, state="disabled")
+        save_all_ui_settings()
+
     tvars["audio_enabled_var"] = tk.BooleanVar(value=settings.get("AUDIO_ENABLED", True))
-    widgets["audio_enabled_check"] = ctk.CTkCheckBox(header_frame, text=localization_manager.get_text("audio_enabled"), variable=tvars["audio_enabled_var"], width=80)
+    widgets["audio_enabled_check"] = ctk.CTkCheckBox(header_frame, text="", variable=tvars["audio_enabled_var"], width=24, command=toggle_audio_btn_state)
     widgets["audio_enabled_check"].pack(side="right", padx=5)
     ToolTip(widgets["audio_enabled_check"], localization_manager.get_text("audio_enabled_tooltip"))
+    toggle_audio_btn_state()
 
     # ========================================
     # INPUT FIELDS
@@ -665,8 +690,10 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
         source = tvars["sound_source_var"].get()
         text_widget = widgets["translation_text"] if source == "translation" else widgets["german_text"]
         text = text_widget.get("1.0", tk.END).strip()
-        if not text:
-            messagebox.showwarning(localization_manager.get_text("warning"), localization_manager.get_text("empty_field_warning"))
+        
+        if not text or text == german_placeholder or text == translation_placeholder:
+            if not text:
+                messagebox.showwarning(localization_manager.get_text("warning"), localization_manager.get_text("empty_field_warning"))
             return
         
         def worker():
