@@ -18,7 +18,7 @@ import shutil
 from core.app_state import app_state
 from core.settings_manager import load_settings, save_settings, get_user_dir, get_data_dir, get_resource_path, DEFAULT_DECK_NAME
 from core.prompts_manager import prompts_manager, update_active_prompts, rename_prompt_preset
-from core.workers import ask_ai_worker, get_ollama_models, add_to_anki_worker, load_background_data_worker, clipboard_worker
+from core.workers import ask_ai_worker, get_ollama_models, add_to_anki_worker, load_background_data_worker, clipboard_worker, get_current_ai_provider
 from core.processing import process_clipboard_queue, process_results_queue
 from core.ui_callbacks import update_auto_generate_flag, update_pause_monitoring_flag, update_processing_indicator
 from core import audio_utils
@@ -27,6 +27,8 @@ from api.ai.ollama_provider import ollama_provider
 from ui.main_window import build_main_window
 from ui.settings_window import open_settings_window, apply_font_settings
 from core.localization import localization_manager
+from modules.batch_generator.logic import batch_processing_worker
+from modules.batch_generator.ui import create_batch_panel
 
 
 # =============================================================================
@@ -134,6 +136,41 @@ def main():
     dependencies.results_queue = app_state.results_queue
     dependencies.update_active_prompts = update_active_prompts
     dependencies.rename_prompt_preset = rename_prompt_preset
+    
+    # Пакетная обработка
+    def start_batch_processing(text):
+        if not text.strip():
+            return
+        
+        phrase_list = [line.strip() for line in text.split('\n') if line.strip()]
+        if not phrase_list:
+            return
+            
+        deck_name = anki_api.clean_deck_name(app_state.main_window_components["vars"]["deck_var"].get())
+        audio_enabled = app_state.main_window_components["vars"]["audio_enabled_var"].get()
+        context_enabled = app_state.main_window_components["vars"]["context_var"].get()
+        
+        # Запускаем поток
+        thread = threading.Thread(
+            target=batch_processing_worker,
+            args=(
+                app_state.results_queue,
+                phrase_list,
+                deck_name,
+                audio_enabled,
+                context_enabled,
+                get_current_ai_provider,
+                audio_utils
+            ),
+            daemon=True
+        )
+        thread.start()
+
+    def stop_batch_processing():
+        app_state.batch_running = False
+
+    dependencies.start_batch_processing = start_batch_processing
+    dependencies.stop_batch_processing = stop_batch_processing
     
     # Generate action wrapper
     def generate_action_wrapper():

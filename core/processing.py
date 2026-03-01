@@ -41,6 +41,30 @@ def process_clipboard_queue(root):
         root.focus_force()
         widgets["german_text"].focus_set()
         
+        # Режим собирателя - дописываем текст в панель пакетной обработки
+        collector_enabled = tvars.get("collector_mode_var") and tvars["collector_mode_var"].get()
+        if collector_enabled:
+            batch_input = widgets.get("batch_input")
+            if batch_input:
+                try:
+                    # Получаем текущее содержимое панели пакета
+                    current_batch_text = batch_input.get("1.0", "end-1c").strip()
+                    formatted_new_text = format_clipboard_text(new_text)
+                    
+                    # Проверка на дубликат в самом списке пакета
+                    if current_batch_text:
+                        existing_lines = [line.strip() for line in current_batch_text.split('\n')]
+                        if formatted_new_text.strip() in existing_lines:
+                            print(f"📋 Собиратель: дубликат проигнорирован ({formatted_new_text[:30]}...)")
+                        else:
+                            batch_input.insert("end", "\n" + formatted_new_text)
+                            print(f"📋 Собиратель: текст добавлен в пакет ({len(formatted_new_text)} символов)")
+                    else:
+                        batch_input.insert("1.0", formatted_new_text)
+                        print(f"📋 Собиратель: текст добавлен в пакет ({len(formatted_new_text)} символов)")
+                except Exception as e:
+                    print(f"Ошибка добавления в пакет: {e}")
+
         auto_gen_enabled = app_state.get_checkbox_value("auto_generate_var", default=False)
         if auto_gen_enabled:
             print(f"🤖 Автогенерация включена, запуск генерации")
@@ -129,6 +153,15 @@ def process_results_queue(root):
             if data:
                 root.after(1500, app_state.main_window_components["on_action_complete"])
             root.after(2000, lambda: update_processing_indicator("", animate=False))
+
+        elif message == "batch_log":
+            _handle_batch_log(widgets, data)
+        elif message == "batch_log_append":
+            _handle_batch_log_append(widgets, data)
+        elif message == "batch_progress":
+            _handle_batch_progress(widgets, data)
+        elif message == "batch_done":
+            _handle_batch_done(widgets)
 
         elif message == "anki_error":
             err_str = str(data)
@@ -236,3 +269,51 @@ def process_results_queue(root):
     finally:
         if root and root.winfo_exists():
             root.after(50, process_results_queue, root)
+
+
+# =====================================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ОБРАБОТКИ СООБЩЕНИЙ
+# =====================================================================================
+
+def _handle_batch_log(widgets, data):
+    """Добавляет новую строку в лог пакетной обработки."""
+    if "batch_log" in widgets:
+        import time
+        widgets["batch_log"].configure(state="normal")
+        widgets["batch_log"].insert("end", f"[{time.strftime('%H:%M:%S')}] {data}\n")
+        widgets["batch_log"].see("end")
+        widgets["batch_log"].configure(state="disabled")
+
+
+def _handle_batch_log_append(widgets, data):
+    """Дописывает текст в конец последней строки лога."""
+    if "batch_log" in widgets:
+        widgets["batch_log"].configure(state="normal")
+        # end-2c — это конец текста перед нашим переносом строки.
+        widgets["batch_log"].insert("end-2c", f" {data}")
+        widgets["batch_log"].see("end")
+        widgets["batch_log"].configure(state="disabled")
+
+
+def _handle_batch_progress(widgets, data):
+    """Обновляет прогресс пакетной обработки."""
+    current, total, phrase = data
+    if "batch_progress_bar" in widgets:
+        widgets["batch_progress_bar"].set(current / total)
+    if "batch_status_label" in widgets:
+        widgets["batch_status_label"].configure(text=f"Обработка {current}/{total}: {phrase[:25]}...")
+
+
+def _handle_batch_done(widgets):
+    """Обрабатывает завершение пакетной обработки."""
+    app_state.batch_running = False
+    app_state.batch_paused = False
+    
+    if "batch_status_label" in widgets:
+        widgets["batch_status_label"].configure(text="✅ Завершено")
+    
+    # Сбрасываем состояние панели через ее метод
+    if hasattr(app_state, 'batch_panel') and app_state.batch_panel:
+        app_state.batch_panel.reset_state()
+    
+    audio_utils.play_sound("success")

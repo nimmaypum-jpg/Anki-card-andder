@@ -289,7 +289,7 @@ class AnkiAPI:
             return False
     
     def add_note(self, phrase: str, translation: str, context: str, 
-                 deck_name: str, audio_path: str = None) -> bool:
+                 deck_name: str, audio_path: str = None, allow_duplicate: bool = False) -> bool:
         """
         Добавляет заметку в Anki.
         
@@ -299,6 +299,7 @@ class AnkiAPI:
             context: Контекст
             deck_name: Имя колоды
             audio_path: Путь к аудиофайлу (опционально)
+            allow_duplicate: Разрешить добавление дубликатов (по умолчанию False)
             
         Returns:
             True при успехе
@@ -316,6 +317,9 @@ class AnkiAPI:
                 "Translation": translation.replace('\n', '<br>'),
                 "Context": context.replace('\n', '<br>'),
                 "Sound": ""  # Explicitly include the Sound field
+            },
+            "options": {
+                "allowDuplicate": allow_duplicate
             },
             "tags": ["youtube", "german", "local-ai"]
         }

@@ -14,6 +14,7 @@ from core import audio_utils
 from ui.theme_manager import theme_manager
 from core.clipboard_manager import setup_text_widget_context_menu, GlobalClipboardManager
 from core.localization import localization_manager
+from modules.batch_generator.ui import create_batch_panel
 
 
 class ToolTip:
@@ -118,13 +119,99 @@ def show_help_window(title, file_name):
         messagebox.showerror(localization_manager.get_text("error"), f"Не удалось открыть справку: {e}")
 
 
-def populate_main_window(dependencies, root, settings, main_frame, widgets, tvars):
+def populate_main_window(dependencies, root, settings, main_frame, widgets, tvars, master_container=None):
     """
     Заполняет основное окно виджетами.
     """
     from core.app_state import app_state
     main_window_components = app_state.main_window_components
     last_prompt = settings.get("LAST_PROMPT", "")
+
+    def save_all_ui_settings(event=None):
+        """Универсальная функция для мгновенного сохранения всех настроек UI"""
+        try:
+            current_settings = dependencies.load_settings()
+
+            # Собираем данные из всех виджетов
+            if "deck_var" in tvars:
+                raw_deck = tvars["deck_var"].get()
+                clean_deck = dependencies.clean_deck_name(raw_deck) if hasattr(dependencies, 'clean_deck_name') else raw_deck
+                current_settings["LAST_DECK"] = clean_deck
+            
+            if hasattr(app_state, 'ollama_model'):
+                current_settings["OLLAMA_MODEL"] = app_state.ollama_model
+
+            if "context_var" in tvars:
+                current_settings["CONTEXT_ENABLED"] = tvars["context_var"].get()
+            if "auto_generate_var" in tvars:
+                current_settings["AUTO_GENERATE_ON_COPY"] = tvars["auto_generate_var"].get()
+            if "pause_monitoring_var" in tvars:
+                current_settings["PAUSE_CLIPBOARD_MONITORING"] = not tvars["pause_monitoring_var"].get()
+            if "sound_source_var" in tvars:
+                current_settings["SOUND_SOURCE"] = tvars["sound_source_var"].get()
+            if "prompt_var" in tvars:
+                current_settings["LAST_PROMPT"] = tvars["prompt_var"].get()
+            if "audio_enabled_var" in tvars:
+                current_settings["AUDIO_ENABLED"] = tvars["audio_enabled_var"].get()
+            if "auto_add_to_anki_var" in tvars:
+                current_settings["AUTO_ADD_TO_ANKI"] = tvars["auto_add_to_anki_var"].get()
+
+            dependencies.save_settings(current_settings)
+        except Exception as e:
+            print(f"Ошибка фонового сохранения настроек: {e}")
+
+    # ========================================
+    # SIDEBAR LOGIC
+    # ========================================
+    right_panel = [None]
+    sidebar_visible = [False]
+
+    # Изначально (при старте) у нас только одна колонка на всю ширину
+    if master_container:
+        master_container.grid_columnconfigure(0, weight=1, uniform="")
+        master_container.grid_columnconfigure(1, weight=0, uniform="") 
+        master_container.grid_rowconfigure(0, weight=1)
+
+    # Меняем pack на grid для левой панели
+    main_frame.pack_forget() 
+    main_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+    def toggle_sidebar():
+        if not master_container:
+            return
+            
+        if not sidebar_visible[0]:
+            # === РЕЖИМ: ДВЕ ПАНЕЛИ (ПОКАЗАТЬ) ===
+            master_container.grid_columnconfigure(0, weight=1, uniform="group1")
+            master_container.grid_columnconfigure(1, weight=1, uniform="group1")
+            
+            main_frame.grid_configure(padx=(10, 5))
+            
+            if right_panel[0] is None:
+                # Создаем панель пакетной обработки
+                right_panel[0] = create_batch_panel(
+                    master_container, 
+                    dependencies.start_batch_processing,
+                    dependencies.stop_batch_processing
+                )
+            
+            # Показываем правую панель
+            right_panel[0].grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+            
+            root.geometry("1000x750")
+            sidebar_visible[0] = True
+        else:
+            # === РЕЖИМ: ОДНА ПАНЕЛЬ (СКРЫТЬ) ===
+            main_frame.grid_configure(padx=10)
+            
+            if right_panel[0]:
+                right_panel[0].grid_forget()
+            
+            master_container.grid_columnconfigure(0, weight=1, uniform="")
+            master_container.grid_columnconfigure(1, weight=0, uniform="")
+            
+            root.geometry("500x750")
+            sidebar_visible[0] = False
 
     # ========================================
     # HEADER
@@ -144,8 +231,17 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
             pin_btn.configure(text="📌", fg_color="#1f538d")
     
     pin_btn = ctk.CTkButton(header_frame, text="📌", command=toggle_pin, width=40, height=30)
-    pin_btn.pack(side="left", padx=(0, 10))
+    pin_btn.pack(side="left", padx=(0, 5))
     widgets["pin_btn"] = pin_btn
+
+    
+    # Кнопка Пакет в правой части хедера
+    batch_btn = ctk.CTkButton(header_frame, text="📦 Пакет", width=80, height=30, 
+                             fg_color="#8B4513", hover_color="#A0522D",
+                             command=toggle_sidebar)
+    batch_btn.pack(side="left", padx=(5, 5))
+    widgets["batch_btn"] = batch_btn
+    ToolTip(batch_btn, "Открыть/скрыть панель пакетной обработки")
 
     # Логотип Wordy
     try:
@@ -173,11 +269,6 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     
     sound_source = settings.get("SOUND_SOURCE", "original")
     tvars["sound_source_var"] = tk.StringVar(value=sound_source)
-    sound_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
-    sound_frame.pack(side="right", padx=5)
-    ctk.CTkRadioButton(sound_frame, text=localization_manager.get_text("sound_source_original"), variable=tvars["sound_source_var"], value="original", width=50).pack(side="left", padx=2)
-    ctk.CTkRadioButton(sound_frame, text=localization_manager.get_text("sound_source_translation"), variable=tvars["sound_source_var"], value="translation", width=60).pack(side="left", padx=2)
-    ToolTip(sound_frame, localization_manager.get_text("sound_source_tooltip"))
     
     widgets["font_settings_btn"] = ctk.CTkButton(header_frame, text="⚙", width=40, height=30, command=lambda: dependencies.open_settings_window(root, dependencies))
     widgets["font_settings_btn"].pack(side="right", padx=(5, 0))
@@ -189,6 +280,68 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     widgets["font_sound_btn"] = ctk.CTkButton(header_frame, text="🔊", width=40, height=30, command=play_selected_audio_wrapper, fg_color="#2cc985", hover_color="#26ad72")
     widgets["font_sound_btn"].pack(side="right", padx=5)
     ToolTip(widgets["font_sound_btn"], localization_manager.get_text("play_audio"))
+
+    popup_menu = [None]
+
+    def show_menu(event=None):
+        if popup_menu[0] is not None:
+            return
+            
+        p = tk.Toplevel(root)
+        p.wm_overrideredirect(True)
+        p.attributes("-topmost", True)
+        p.configure(bg="#2b2b2b")
+        
+        btn = widgets["font_sound_btn"]
+        x = btn.winfo_rootx()
+        y = btn.winfo_rooty() + btn.winfo_height() + 2
+        p.geometry(f"+{x}+{y}")
+        
+        f = ctk.CTkFrame(p, fg_color="#333333", border_width=1, border_color="#555555", corner_radius=4)
+        f.pack(fill="both", expand=True)
+        
+        def set_source(val):
+            tvars["sound_source_var"].set(val)
+            save_all_ui_settings()
+            hide_menu()
+            
+        val = tvars["sound_source_var"].get()
+        b1 = ctk.CTkButton(f, text=localization_manager.get_text("sound_source_original"), width=80, height=28, fg_color="transparent", hover_color="#444444",
+                           text_color="#2cc985" if val == "original" else "white", anchor="w",
+                           command=lambda: set_source("original"))
+        b1.pack(pady=(2, 0), padx=2)
+        
+        b2 = ctk.CTkButton(f, text=localization_manager.get_text("sound_source_translation"), width=80, height=28, fg_color="transparent", hover_color="#444444",
+                           text_color="#2cc985" if val == "translation" else "white", anchor="w",
+                           command=lambda: set_source("translation"))
+        b2.pack(pady=(0, 2), padx=2)
+        
+        popup_menu[0] = p
+        
+        def check_leave():
+            if popup_menu[0] is None: return
+            rx, ry = p.winfo_pointerxy()
+            bx, by = btn.winfo_rootx(), btn.winfo_rooty()
+            bw, bh = btn.winfo_width(), btn.winfo_height()
+            px, py = p.winfo_rootx(), p.winfo_rooty()
+            pw, ph = p.winfo_width(), p.winfo_height()
+            
+            in_btn = (bx-5 <= rx <= bx+bw+5) and (by-5 <= ry <= by+bh+5)
+            in_pop = (px-5 <= rx <= px+pw+5) and (py-5 <= ry <= py+ph+5)
+            
+            if not (in_btn or in_pop):
+                hide_menu()
+            else:
+                p.after(100, check_leave)
+        
+        p.after(100, check_leave)
+
+    def hide_menu():
+        if popup_menu[0]:
+            popup_menu[0].destroy()
+            popup_menu[0] = None
+
+    widgets["font_sound_btn"].bind("<Enter>", show_menu)
     
     tvars["audio_enabled_var"] = tk.BooleanVar(value=settings.get("AUDIO_ENABLED", True))
     widgets["audio_enabled_check"] = ctk.CTkCheckBox(header_frame, text=localization_manager.get_text("audio_enabled"), variable=tvars["audio_enabled_var"], width=80)
@@ -287,7 +440,7 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     checks_frame = ctk.CTkFrame(gen_frame, fg_color="transparent")
     checks_frame.pack(side="left", padx=5, pady=5)
     tvars["context_var"] = tk.BooleanVar(value=settings.get("CONTEXT_ENABLED", False))
-    widgets["context_check"] = ctk.CTkCheckBox(checks_frame, text=localization_manager.get_text("context_enabled"), variable=tvars["context_var"])
+    widgets["context_check"] = ctk.CTkCheckBox(checks_frame, text=localization_manager.get_text("context_enabled"), variable=tvars["context_var"], command=save_all_ui_settings)
     widgets["context_check"].pack(anchor="w", pady=2)
     ToolTip(widgets["context_check"], localization_manager.get_text("context_enabled_tooltip"))
     
@@ -435,7 +588,7 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     auto_add_label.pack(side="left", padx=(0, 2))
     
     tvars["auto_add_to_anki_var"] = tk.BooleanVar(value=settings.get("AUTO_ADD_TO_ANKI", False))
-    widgets["auto_add_to_anki_check"] = ctk.CTkCheckBox(add_to_anki_frame, text="", variable=tvars["auto_add_to_anki_var"], width=20)
+    widgets["auto_add_to_anki_check"] = ctk.CTkCheckBox(add_to_anki_frame, text="", variable=tvars["auto_add_to_anki_var"], width=20, command=save_all_ui_settings)
     widgets["auto_add_to_anki_check"].pack(side="left", padx=(0, 5))
     ToolTip(widgets["auto_add_to_anki_check"], localization_manager.get_text("auto_add_tooltip"))
     
@@ -553,12 +706,16 @@ def build_main_window(dependencies, root, settings, start_time=None):
     root.title(localization_manager.get_text("app_title"))
     root.geometry("500x750")
     
-    main_frame = ctk.CTkFrame(root)
-    main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    # Контейнер для боковой панели
+    master_container = ctk.CTkFrame(root, fg_color="transparent")
+    master_container.pack(fill="both", expand=True)
+    
+    # Левая панель (Main)
+    left_panel = ctk.CTkFrame(master_container)
     
     widgets = {}
     tvars = {}
 
-    root.after(10, lambda: populate_main_window(dependencies, root, settings, main_frame, widgets, tvars))
+    root.after(10, lambda: populate_main_window(dependencies, root, settings, left_panel, widgets, tvars, master_container))
     
     return root

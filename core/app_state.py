@@ -39,8 +39,11 @@ class AppState:
     pause_clipboard_monitoring: bool = True  # По умолчанию перехват выключен
     auto_generate_on_copy: bool = True
     generation_running: bool = False
+    batch_running: bool = False
+    batch_paused: bool = False  # Пауза пакетной обработки
     clipboard_running: bool = True
     force_replace_flag: bool = False
+    check_duplicates: bool = True  # Проверять дубликаты в Anki
     
     # Буфер обмена
     last_clipboard: str = ""
@@ -48,6 +51,9 @@ class AppState:
     # Очереди для межпоточной коммуникации
     clipboard_queue: queue.Queue = field(default_factory=queue.Queue)
     results_queue: queue.Queue = field(default_factory=queue.Queue)
+    
+    # Ссылка на панель пакетной обработки
+    batch_panel: Optional[Any] = None
     
     # Компоненты главного окна (ссылки на виджеты и переменные)
     main_window_components: Dict[str, Any] = field(default_factory=dict)
