@@ -234,38 +234,22 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     pin_btn.pack(side="left", padx=(0, 5))
     widgets["pin_btn"] = pin_btn
 
-    
-    # Кнопка Пакет в правой части хедера
-    batch_btn = ctk.CTkButton(header_frame, text="📦 Пакет", width=80, height=30, 
-                             fg_color="#8B4513", hover_color="#A0522D",
-                             command=toggle_sidebar)
-    batch_btn.pack(side="left", padx=(5, 5))
-    widgets["batch_btn"] = batch_btn
-    ToolTip(batch_btn, "Открыть/скрыть панель пакетной обработки")
-
-    # Логотип Wordy
-    try:
-        from PIL import Image
-        from core.settings_manager import get_resource_path
-        import os
-        logo_path = get_resource_path(os.path.join("assets", "logo.png"))
-        if os.path.exists(logo_path):
-            img = Image.open(logo_path)
-            aspect_ratio = img.width / img.height
-            new_width = int(30 * aspect_ratio)
-            logo_image = ctk.CTkImage(light_image=img, dark_image=img, size=(new_width, 30))
-            logo_label = ctk.CTkLabel(header_frame, text="", image=logo_image)
-            logo_label.pack(side="left", padx=5)
-            widgets["logo_label"] = logo_label
-    except Exception as e:
-        print(f"Ошибка загрузки логотипа: {e}")
-
-    # Кнопка Help в хедере (перемещена вправо)
+    # Кнопка Help в хедере (перемещена влево от пакета)
     help_btn = ctk.CTkButton(header_frame, text=localization_manager.get_text("help"), width=50, height=30, 
                              fg_color="transparent", border_width=1, 
                              command=lambda: show_help_window("Главное окно", "Main_Window_Help.txt"))
-    help_btn.pack(side="right", padx=5)
+    help_btn.pack(side="left", padx=(5, 5))
     ToolTip(help_btn, localization_manager.get_text("help_tooltip"))
+
+    # Кнопка Пакет в правой части хедера (как было раньше)
+    # Используем закругления с одной стороны (15, 0, 0, 15) для обратного эффекта "стрелки"
+    batch_btn = ctk.CTkButton(header_frame, text="Пакет ➔", width=80, height=30, 
+                             fg_color="#8B4513", hover_color="#A0522D",
+                             corner_radius=10,
+                             command=toggle_sidebar)
+    batch_btn.pack(side="right", padx=(5, 5))
+    widgets["batch_btn"] = batch_btn
+    ToolTip(batch_btn, "Открыть/скрыть панель пакетной обработки")
     
     sound_source = settings.get("SOUND_SOURCE", "original")
     tvars["sound_source_var"] = tk.StringVar(value=sound_source)
@@ -285,7 +269,7 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
         audio_active_img = ctk.CTkImage(light_image=Image.open(audio_active_path), dark_image=Image.open(audio_active_path), size=(20, 20))
         audio_inactive_img = ctk.CTkImage(light_image=Image.open(audio_inactive_path), dark_image=Image.open(audio_inactive_path), size=(20, 20))
     except Exception as e:
-        print(f"Ошибка загрузки иконок аудио: {e}")
+        print("Error loading audio icons:", e)
         audio_active_img = None
         audio_inactive_img = None
 
@@ -293,6 +277,11 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
                                               image=audio_active_img, width=40, height=30, 
                                               command=play_selected_audio_wrapper, 
                                               fg_color="transparent", hover=False)
+    
+    # Store references to prevent garbage collection
+    widgets["font_sound_btn"].image_active = audio_active_img
+    widgets["font_sound_btn"].image_inactive = audio_inactive_img
+
     widgets["font_sound_btn"].pack(side="right", padx=5)
     ToolTip(widgets["font_sound_btn"], localization_manager.get_text("play_audio"))
 
@@ -323,12 +312,12 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
             hide_menu()
             
         val = tvars["sound_source_var"].get()
-        b1 = ctk.CTkButton(f, text=localization_manager.get_text("sound_source_original"), width=80, height=28, fg_color="transparent", hover_color="#444444",
+        b1 = ctk.CTkButton(f, text="🇩🇪 " + localization_manager.get_text("sound_source_original"), width=80, height=28, fg_color="transparent", hover_color="#444444",
                            text_color="#2cc985" if val == "original" else "white", anchor="w",
                            command=lambda: set_source("original"))
         b1.pack(pady=(2, 0), padx=2)
         
-        b2 = ctk.CTkButton(f, text=localization_manager.get_text("sound_source_translation"), width=80, height=28, fg_color="transparent", hover_color="#444444",
+        b2 = ctk.CTkButton(f, text="🇷🇺 " + localization_manager.get_text("sound_source_translation"), width=80, height=28, fg_color="transparent", hover_color="#444444",
                            text_color="#2cc985" if val == "translation" else "white", anchor="w",
                            command=lambda: set_source("translation"))
         b2.pack(pady=(0, 2), padx=2)
@@ -362,9 +351,9 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     
     def toggle_audio_btn_state():
         if tvars.get("audio_enabled_var") and tvars["audio_enabled_var"].get():
-            widgets["font_sound_btn"].configure(image=audio_active_img, state="normal")
+            widgets["font_sound_btn"].configure(image=widgets["font_sound_btn"].image_active, state="normal")
         else:
-            widgets["font_sound_btn"].configure(image=audio_inactive_img, state="disabled")
+            widgets["font_sound_btn"].configure(image=widgets["font_sound_btn"].image_inactive, state="disabled")
         save_all_ui_settings()
 
     tvars["audio_enabled_var"] = tk.BooleanVar(value=settings.get("AUDIO_ENABLED", True))
@@ -532,6 +521,23 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
     ai_indicator_frame = ctk.CTkFrame(gen_frame)
     ai_indicator_frame.pack(side="right", padx=5, pady=5)
     
+    # Логотип Wordy (перемещен из хедера)
+    try:
+        from PIL import Image
+        from core.settings_manager import get_resource_path
+        logo_path = get_resource_path(os.path.join("assets", "logo.png"))
+        if os.path.exists(logo_path):
+            img = Image.open(logo_path)
+            aspect_ratio = img.width / img.height
+            new_width = int(25 * aspect_ratio)
+            # Изменили размер на чуть поменьше (25), так как он в нижнем блоке
+            logo_image = ctk.CTkImage(light_image=img, dark_image=img, size=(new_width, 25))
+            logo_label = ctk.CTkLabel(ai_indicator_frame, text="", image=logo_image)
+            logo_label.pack(side="top", pady=(0, 2))
+            widgets["logo_label"] = logo_label
+    except Exception as e:
+        print(f"Ошибка загрузки логотипа: {e}")
+    
     # Скрытая переменная для модели (используется при генерации)
     tvars["ollama_var"] = tk.StringVar(value=settings.get("OLLAMA_MODEL", ""))
     
@@ -539,9 +545,10 @@ def populate_main_window(dependencies, root, settings, main_frame, widgets, tvar
         ai_indicator_frame, 
         text=f"⚡ {settings.get('OLLAMA_MODEL', localization_manager.get_text('ai_not_configured'))}", 
         text_color=("#666666", "#aaaaaa"),
+        font=("Roboto", 11),
         cursor="hand2"
     )
-    ai_model_label.pack()
+    ai_model_label.pack(side="top", pady=(0, 0))
     widgets["ai_model_label"] = ai_model_label
     
     def open_ai_settings():
